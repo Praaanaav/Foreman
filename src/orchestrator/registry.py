@@ -8,6 +8,13 @@ from pydantic import BaseModel
 
 from orchestrator.schemas import AgentType
 
+try:  # optional: only needed when binding tools to LangChain agents
+    from langchain_core.tools import StructuredTool
+
+    _HAS_LANGCHAIN = True
+except ImportError:
+    _HAS_LANGCHAIN = False
+
 log = logging.getLogger("orchestrator.tools")
 
 
@@ -68,6 +75,37 @@ class ToolRegistry:
 
     def tools_for(self, agent: AgentType) -> list[Tool]:
         return [t for t in self._tools.values() if agent in t.allowed_agents]
+
+    def _run(self, agent: AgentType, name: str, **kwargs) -> str:
+        record = self.call(name, agent, **kwargs)
+        return record.output or f"TOOL ERROR: {record.error}"
+
+    def to_langchain_tools(self, agent: AgentType) -> list:
+        """Bind this agent's permitted tools as LangChain tools.
+
+        Every call still goes through registry.call(), so permissions,
+        rate limits, and the call log keep applying.
+        """
+        if not _HAS_LANGCHAIN:
+            raise RuntimeError("langchain-core is not installed")
+
+        def make(tool_name: str, agent_type: AgentType) -> Callable[..., str]:
+            def run(**kwargs: object) -> str:
+                return self._run(agent_type, tool_name, **kwargs)
+
+            return run
+
+        tools = []
+        for tool in self.tools_for(agent):
+            tools.append(
+                StructuredTool.from_function(
+                    func=make(tool.name, agent),
+                    name=tool.name,
+                    description=tool.description,
+                    args_schema=tool.input_model,
+                )
+            )
+        return tools
 
     def call(self, name: str, agent: AgentType, **kwargs) -> ToolCallRecord:
         tool = self._tools.get(name)

@@ -1,0 +1,163 @@
+PROJECT: AI Travel Agent Orchestration System
+
+Build a domain-specific multi-agent AI system for personalized travel planning.
+
+The user provides a natural-language travel request such as:
+"Plan a 10-day Japan trip for two people with a ₹1.5 lakh budget. We prefer vegetarian food, slow travel, cultural experiences, and minimal hotel changes."
+
+The system is controlled by a Travel Supervisor Agent built with LangGraph. The Supervisor understands the request, retrieves the user's travel preferences and previous trip memories, creates an execution plan, and delegates tasks to specialized travel agents.
+
+SPECIALIZED AGENTS:
+
+1. Destination Agent
+   - Researches destinations, attractions, activities, and travel information.
+
+2. Transportation Agent
+   - Researches flights, trains, buses, transfers, and local transportation.
+
+3. Accommodation Agent
+   - Finds hotels/stays according to budget, location, and traveler preferences.
+
+4. Budget Agent
+   - Calculates transportation, accommodation, food, activity, and overall trip costs.
+
+5. Itinerary Agent
+   - Combines the research into a realistic day-by-day itinerary while considering travel time, opening hours, budget, and user preferences.
+
+6. Travel Information Agent
+   - Handles weather, visa/entry information, local rules, events, and other destination-specific information.
+
+7. Reviewer Agent
+   - Validates the proposed travel plan, checks for inconsistencies, unrealistic schedules, budget violations, missing information, and unsupported claims.
+
+The agents communicate through shared LangGraph state. Independent travel research can run in parallel, while dependent tasks wait for the required information.
+
+TRAVEL TOOLS:
+
+Agents should have access to travel-specific tools such as:
+- Web search
+- Flight search
+- Hotel search
+- Maps/distance calculation
+- Weather
+- Currency conversion
+- Attraction search
+- Travel-time calculation
+- External travel APIs
+- Database/user-preference lookup
+
+Every tool call should be logged with the agent, inputs, outputs, latency, status, and cost.
+
+MEMORY:
+
+The system has two types of memory.
+
+Short-term memory:
+Stores the current trip's requirements, research results, selected destinations, hotel options, transportation options, budget calculations, itinerary drafts, errors, and reviewer feedback.
+
+Long-term memory:
+Stores traveler preferences and useful information from previous trips, such as:
+- Budget preferences
+- Food preferences
+- Travel pace
+- Accommodation preferences
+- Preferred activities
+- Previous destinations
+- Previous feedback
+
+Use Redis for short-term task memory, PostgreSQL for structured traveler/trip data, and ChromaDB for semantic long-term memory.
+
+Before planning a new trip, the Supervisor retrieves relevant memories and uses them to personalize the new itinerary.
+
+HUMAN-IN-THE-LOOP:
+
+The system should not blindly perform consequential actions.
+
+Escalate to a human when:
+- Agent confidence is low
+- Important travel information conflicts
+- Specialists repeatedly fail
+- The itinerary exceeds the user's budget
+- Visa/entry information cannot be confidently verified
+- A booking or other consequential action is requested
+- The reviewer rejects the itinerary
+
+The workflow pauses and sends the human the complete context, proposed action, reasoning/context, sources, budget, and itinerary.
+
+The human can:
+- Approve
+- Modify
+- Reject
+- Take over
+
+After the decision, the workflow resumes.
+
+OBSERVABILITY:
+
+Every travel-planning execution should be fully traceable.
+
+Track:
+- Supervisor decisions
+- Agent execution
+- Tool calls
+- Memory retrieval
+- LLM usage
+- Token/cost usage
+- Latency
+- Errors
+- Retries
+- Reviewer decisions
+- Human interventions
+
+Build a trace explorer showing the complete execution graph and allowing developers to inspect and replay previous travel-planning sessions.
+
+END-TO-END FLOW:
+
+User Request
+    ↓
+Traveler Profile + Memory Retrieval
+    ↓
+Travel Supervisor
+    ↓
+Task Decomposition
+    ↓
+Parallel Travel Research
+    ├── Destination Agent
+    ├── Transportation Agent
+    ├── Accommodation Agent
+    └── Travel Information Agent
+    ↓
+Budget Agent
+    ↓
+Itinerary Agent
+    ↓
+Reviewer Agent
+    ├── Reject → Replan / Retry
+    ├── Escalate → Human Review
+    └── Approve
+    ↓
+Final Personalized Itinerary
+    ↓
+Save Useful Travel Memory
+
+TECH STACK:
+
+Python
+LangGraph
+OpenAI / Anthropic
+MCP + custom travel tools
+Redis
+PostgreSQL
+ChromaDB
+Celery
+Docker
+OpenTelemetry
+React or Streamlit
+
+CORE GOAL:
+
+This should not be a simple chatbot that generates an itinerary.
+
+It should be a complete Travel Agent Orchestration System where multiple specialized agents can independently research and reason about different parts of a trip, share state and memory, validate each other's work, recover from failures, involve humans when necessary, and produce a personalized, realistic, and budget-aware travel plan.
+
+The domain is Travel. Multi-agent orchestration, tool use, memory, observability, and human-in-the-loop are the core technologies used to build it.
